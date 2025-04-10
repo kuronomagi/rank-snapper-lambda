@@ -1,0 +1,73 @@
+service: ranking-scraper-lambda
+
+frameworkVersion: '4'
+
+custom:
+  stages:
+    dev:
+      nodeEnv: 'development' # devステージの時のNODE_ENVの値
+      googleDriveScreenshotFolderId: ${env:GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID_DEV} # .env ファイルなどから読み込む想定
+      googleDriveHtmlFolderId: ${env:GOOGLE_DRIVE_HTML_FOLDER_ID_DEV}
+      googleCredentialsJson: ${env:GOOGLE_CREDENTIALS_JSON_DEV, ''}
+    prod:
+      nodeEnv: 'production' # prodステージの時のNODE_ENVの値
+      googleDriveScreenshotFolderId: ${env:GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID_PROD}
+      googleDriveHtmlFolderId: ${env:GOOGLE_DRIVE_HTML_FOLDER_ID_PROD}
+      googleCredentialsJson: ${env:GOOGLE_CREDENTIALS_JSON_PROD, ''}
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ap-northeast-1 # 東京リージョン
+  stage: ${opt:stage, 'dev'} # コマンドラインオプションで指定されたステージ、なければ 'dev'
+  memorySize: 2048 # メモリサイズ（MB）
+  timeout: 300 # タイムアウト（秒）
+  logRetentionInDays: 30
+  environment:
+    # GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID: ${env:GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID}
+    # GOOGLE_DRIVE_HTML_FOLDER_ID: ${env:GOOGLE_DRIVE_HTML_FOLDER_ID}
+    # GOOGLE_CREDENTIALS_JSON: ${env:GOOGLE_CREDENTIALS_JSON, ''}
+    # DEBUG: ${env:DEBUG, 'false'}
+
+    # ステージに応じた値を custom セクションから参照
+    GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID: ${self:custom.stages.${self:provider.stage}.googleDriveScreenshotFolderId}
+    GOOGLE_DRIVE_HTML_FOLDER_ID: ${self:custom.stages.${self:provider.stage}.googleDriveHtmlFolderId}
+    GOOGLE_CREDENTIALS_JSON: ${self:custom.stages.${self:provider.stage}.googleCredentialsJson}
+    DEBUG: ${env:DEBUG, 'false'}
+    # NODE_ENV: ${self:provider.stage} # ステージ名を NODE_ENV に設定するなど
+    NODE_ENV: ${self:custom.stages.${self:provider.stage}.nodeEnv}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - 's3:PutObject'
+            - 's3:GetObject'
+          Resource: 'arn:aws:s3:::ranking-screenshot-bucket/*'
+  deploymentBucket:
+    name: stg-rank-snapper-serverless-framework # ここに事前に作成したバケット名を入力
+    # blockPublicAccess: true # 推奨: パブリックアクセスをブロック
+    # serverSideEncryption: AES256 # 推奨: サーバーサイド暗号化を有効化
+
+functions:
+  snapperRankings:
+    handler: index.handler
+    description: 'ランキングページのスクレイピングとスクリーンショット取得・GoogleDriveへのアップロード'
+    events:
+      # 毎日午前6時(UTC)に実行（日本時間15時）
+      - schedule: cron(0 6 * * ? *)
+    # @sparticuz/chromium はレイヤーの必要がなく、パッケージに含まれます
+
+plugins:
+  - serverless-offline
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/puppeteer/**'
+    - '!.git/**'
+    - '!.github/**'
+    - '!.vscode/**'
+    - '!test/**'
+    - '!.env*'
+    - '!README.md'

@@ -1,0 +1,36 @@
+{
+  "name": "ranking-scraper-lambda",
+  "version": "1.0.0",
+  "description": "スクレイピングとスクリーンショット取得とGoogle Driveアップロード用Lambda関数",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "serverless deploy --aws-profile stg-fukuramu-lambda-deployment-user",
+    "deploy:prod": "serverless deploy --stage prod --aws-profile stg-fukuramu-lambda-deployment-user"
+  },
+  "keywords": [
+    "scraping",
+    "screenshot",
+    "lambda",
+    "aws",
+    "google-drive"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sparticuz/chromium": "^133.0.0",
+    "dotenv": "^16.4.7",
+    "googleapis": "^148.0.0",
+    "puppeteer-core": "^24.6.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.6.1",
+    "serverless": "^4.12.0",
+    "serverless-offline": "^14.4.0"
+  }
+}

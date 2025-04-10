@@ -1,0 +1,56 @@
+# 依存関係
+node_modules/
+
+# 環境変数
+.env
+.env.*
+!.env.example
+
+# ログ
+logs
+*.log
+npm-debug.log*
+
+# ランタイムデータ
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ビルド成果物
+dist/
+build/
+.serverless/
+
+# キャッシュと一時ファイル
+.npm
+.eslintcache
+.node_repl_history
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
+temp/
+
+# Google認証情報
+google-credentials.json
+*-credentials.json
+credentials.json
+
+# スクリーンショットの一時ファイル
+*.png
+*.jpg
+*.jpeg
+*.html
+!examples/*.png
+!examples/*.jpg
+!examples/*.jpeg
+!examples/*.html
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.env.*

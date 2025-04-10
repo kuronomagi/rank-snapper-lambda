@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # DockerのBuildkitを有効化してキャッシュを利用
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: ranking-scraper
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - /tmp:/tmp
+    environment:
+      - NODE_ENV=development
+      - DEBUG=false
+      - GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID=${GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID}
+      - GOOGLE_DRIVE_HTML_FOLDER_ID=${GOOGLE_DRIVE_HTML_FOLDER_ID}
+      - GOOGLE_CREDENTIALS_JSON=${GOOGLE_CREDENTIALS_JSON}
+      - CHROMIUM_PATH=/usr/bin/chromium
+    # Xvfbを使ってヘッドレスブラウザを実行（オプション）
+    command: >
+      bash -c "
+        Xvfb :99 -screen 0 1920x1080x24 -ac &
+        export DISPLAY=:99
+        node index.js
+      "
+
+volumes:
+  node_modules:
