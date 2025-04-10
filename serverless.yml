@@ -34,7 +34,7 @@ provider:
     GOOGLE_DRIVE_HTML_FOLDER_ID: ${self:custom.stages.${self:provider.stage}.googleDriveHtmlFolderId}
     GOOGLE_CREDENTIALS_JSON: ${self:custom.stages.${self:provider.stage}.googleCredentialsJson}
     DEBUG: ${env:DEBUG, 'false'}
-    # NODE_ENV: ${self:provider.stage} # ステージ名を NODE_ENV に設定するなど
+    # NODE_ENV: ${self:provider.stasge} # ステージ名を NODE_ENV に設定するなど
     NODE_ENV: ${self:custom.stages.${self:provider.stage}.nodeEnv}
   iam:
     role:
@@ -53,10 +53,12 @@ functions:
   snapperRankings:
     handler: index.handler
     description: 'ランキングページのスクレイピングとスクリーンショット取得・GoogleDriveへのアップロード'
+    layers:
+      - arn:aws:lambda:ap-northeast-1:061051243877:layer:japanese-fonts:3 # 自作の日本語フォントレイヤー
+      - arn:aws:lambda:ap-northeast-1:061051243877:layer:chromium:1 # 自作の chromium v133 レイヤー
     events:
       # 毎日午前6時(UTC)に実行（日本時間15時）
       - schedule: cron(0 6 * * ? *)
-    # @sparticuz/chromium はレイヤーの必要がなく、パッケージに含まれます
 
 plugins:
   - serverless-offline
@@ -64,10 +66,42 @@ plugins:
 package:
   individually: true
   patterns:
-    - '!node_modules/puppeteer/**'
+    - node_modules/** # 他の依存関係は含める
+      # --- Excludes ---
+    - '!.git/**'
+    - '!.github/**'
+    # ... 他のトップレベル除外 ...
+    - '!node_modules/@sparticuz/chromium/**' # Chromium本体除外 (最重要)
+    - '!node_modules/puppeteer/**' # devDep
+    - '!node_modules/puppeteer-.local-chromium/**'
+    # node_modules 内の不要ファイルを除外 (例)
+    - '!node_modules/**/test/**'
+    - '!node_modules/**/tests/**'
+    - '!node_modules/**/*.md'
+    - '!node_modules/**/*.markdown'
+    - '!node_modules/**/LICENSE'
+    - '!node_modules/**/CHANGELOG*'
+    - '!node_modules/**/*.map' # ソースマップ除外
+    - '!node_modules/aws-sdk/**' # Lambdaランタイムに含まれるaws-sdkは除外(v2の場合)
+    # puppeteer(devDep)にバンドルされるChromiumも念のため除外
+    - '!node_modules/puppeteer/.local-chromium/**'
+    # --- ▲▲▲ 除外設定 ▲▲▲ ---
+    # 以下は既存の除外/包含パターン (必要に応じて調整)
     - '!.git/**'
     - '!.github/**'
     - '!.vscode/**'
     - '!test/**'
     - '!.env*'
     - '!README.md'
+    - '!lambda-layer/**'
+    - '!documents/**'
+    - '!chromium'
+    - '!japanese-fonts-layer.zip'
+    - '!README.md'
+    # 必須ファイル/ディレクトリを含める
+    - src/**
+    - index.js
+    - config.js       # config.js があれば含める
+    - utils.js        # utils.js があれば含める
+    - browser.js      # browser.js を含める
+    # - test.txt
