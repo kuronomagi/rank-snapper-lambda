@@ -9,18 +9,20 @@ const config = require('./config');
  * スクレイピングとスクリーンショット取得の実行
  * @returns {Promise<Object>} 実行結果
  */
-async function snapperRankings() {
+async function snapperRankings(rakutenUrl = config.RAKUTEN_URL, amazonUrl = config.AMAZON_URL) {
   const results = {};
 
   console.log('[INFO] Starting ranking snapshot process...');
 
   // 楽天のスナップショット取得
   console.log('[INFO] Starting Rakuten snapshot...');
-  results.rakuten = await snapperPlatform('rakuten', config.RAKUTEN_URL);
+  // ↓↓↓ 引数で渡された URL を snapperPlatform に渡す ↓↓↓
+  results.rakuten = await snapperPlatform('rakuten', rakutenUrl);
 
   // Amazonのスナップショット取得
   console.log('[INFO] Starting Amazon snapshot...');
-  results.amazon = await snapperPlatform('amazon', config.AMAZON_URL);
+  // ↓↓↓ 引数で渡された URL を snapperPlatform に渡す ↓↓↓
+  results.amazon = await snapperPlatform('amazon', amazonUrl);
 
   console.log('[INFO] Snapshot process finished.');
   return results;

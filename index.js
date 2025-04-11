@@ -14,11 +14,20 @@ const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || 'https://hooks.slack.co
  */
 exports.handler = async (event, context) => {
   console.log('[INFO] Starting ranking snapper Lambda function');
-  console.log('[INFO] Event:', JSON.stringify(event));
+  console.log('[INFO] Received event:', JSON.stringify(event, null, 2));
 
   try {
+    // event オブジェクトから rakutenUrl と amazonUrl を取得
+    // event が空、またはキーが存在しない場合のデフォルト値を config から取得
+    const rakutenUrl = event?.rakutenUrl || config.RAKUTEN_URL;
+    const amazonUrl = event?.amazonUrl || config.AMAZON_URL;
+
+    console.log(`[INFO] Using Rakuten URL: ${rakutenUrl}`);
+    console.log(`[INFO] Using Amazon URL: ${amazonUrl}`);
+
     // スクレイピングとスクリーンショットの実行
-    const results = await snapperRankings();
+    const results = await snapperRankings(rakutenUrl, amazonUrl);
+    // const results = await snapperRankings();
 
     console.log('[INFO] Successfully completed ranking snapshots');
 
@@ -126,13 +135,19 @@ function postToSlack(message) {
   });
 }
 
-
 // Lambda環境でない場合（ローカル実行時）の処理は変更なし
 if (require.main === module) {
   (async () => {
     try {
-      const results = await snapperRankings();
+      // ローカル実行時のデフォルト URL またはコマンドライン引数などから取得
+      const localRakutenUrl = process.argv[2] || config.RAKUTEN_URL;
+      const localAmazonUrl = process.argv[3] || config.AMAZON_URL;
+      console.log(`[INFO] Local execution with Rakuten URL: ${localRakutenUrl}, Amazon URL: ${localAmazonUrl}`);
+      const results = await snapperRankings(localRakutenUrl, localAmazonUrl); // 引数を渡す
       console.log('[INFO] Local execution results:', JSON.stringify(results, null, 2));
+
+      // const results = await snapperRankings();
+      // console.log('[INFO] Local execution results:', JSON.stringify(results, null, 2));
     } catch (error) {
       console.error('[ERROR] Local execution failed:', error);
       // ローカル実行時にもSlack通知したい場合は、ここでも postToSlack を呼ぶ
