@@ -9,20 +9,45 @@ const config = require('./config');
  * スクレイピングとスクリーンショット取得の実行
  * @returns {Promise<Object>} 実行結果
  */
-async function snapperRankings(rakutenUrl = config.RAKUTEN_URL, amazonUrl = config.AMAZON_URL) {
+async function snapperRankings(rakutenUrl, amazonUrl, takeScreenshot = true) {
   const results = {};
+
+  // ★ takeScreenshot フラグを options オブジェクトに格納
+  const options = { takeScreenshot };
 
   console.log('[INFO] Starting ranking snapshot process...');
 
-  // 楽天のスナップショット取得
-  console.log('[INFO] Starting Rakuten snapshot...');
-  // ↓↓↓ 引数で渡された URL を snapperPlatform に渡す ↓↓↓
-  results.rakuten = await snapperPlatform('rakuten', rakutenUrl);
+  // --- 楽天の処理 (URLが存在する場合のみ) ---
+  if (rakutenUrl) {
+    console.log(`[INFO] Starting Rakuten processing (takeScreenshot: ${takeScreenshot})...`);
+    try {
+      results.rakuten = await snapperPlatform('rakuten', rakutenUrl, options);
+    } catch (e) {
+        // snapperPlatform内でエラーが捕捉され、エラー情報を含むオブジェクトが返る想定だが、
+        // 予期せぬエラーで例外が投げられた場合も考慮
+        console.error(`[ERROR] Uncaught error during Rakuten processing: ${e.message}`);
+        results.rakuten = { success: false, error: `Uncaught error: ${e.message}`, html_content: null };
+    }
+  } else {
+    console.log('[INFO] Skipping Rakuten processing: URL not provided.');
+    results.rakuten = { skipped: true, message: 'URL not provided' }; // スキップ情報を格納
+  }
+  // ----------------------------------------
 
-  // Amazonのスナップショット取得
-  console.log('[INFO] Starting Amazon snapshot...');
-  // ↓↓↓ 引数で渡された URL を snapperPlatform に渡す ↓↓↓
-  results.amazon = await snapperPlatform('amazon', amazonUrl);
+  // --- Amazonの処理 (URLが存在する場合のみ) ---
+  if (amazonUrl) {
+  console.log(`[INFO] Starting Amazon processing (takeScreenshot: ${takeScreenshot})...`);
+    try {
+    results.amazon = await snapperPlatform('amazon', amazonUrl, options);
+  } catch (e) {
+      console.error(`[ERROR] Uncaught error during Amazon processing: ${e.message}`);
+      results.amazon = { success: false, error: `Uncaught error: ${e.message}`, html_content: null };
+  }
+  } else {
+    console.log('[INFO] Skipping Amazon processing: URL not provided.');
+    results.amazon = { skipped: true, message: 'URL not provided' }; // スキップ情報を格納
+  }
+  // -----------------------------------------
 
   console.log('[INFO] Snapshot process finished.');
   return results;
@@ -32,136 +57,166 @@ async function snapperRankings(rakutenUrl = config.RAKUTEN_URL, amazonUrl = conf
  * 特定プラットフォームのスクレイピングとスクリーンショット取得
  * @param {string} platformName プラットフォーム名（'rakuten'または'amazon'）
  * @param {string} url スクレイピング対象のURL
+ * @param {object} options オプション ({ takeScreenshot: boolean })
  * @returns {Promise<Object>} 実行結果
  */
-async function snapperPlatform(platformName, url) {
+//
+async function snapperPlatform(platformName, url, options = { takeScreenshot: true }) {
+  // ★ オプションから takeScreenshot フラグを取得
+  const { takeScreenshot } = options;
   let browser = null;
   let page = null;
+  let htmlContent = null;
+  let screenshotPath = null; // スクリーンショットのパスを保持
+  let htmlPath = null;     // HTMLのパスを保持
+  let htmlMetadata = null;
+  let screenshotMetadata = null;
 
   try {
-    // ブラウザの初期化
     browser = await initializeBrowser();
     page = await browser.newPage();
-
-    // ステルスモードの設定
     await setupStealthMode(page);
 
     console.log(`[INFO] Navigating to ${url} for ${platformName}`);
-    await page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // ページの読み込み完了を待機
-    await new Promise(resolve => setTimeout(resolve, 2000)); // レンダリング待ち
-
-    // タイムスタンプとファイル名の作成
     const timestamp = getCurrentTimestamp();
     const filenameBase = `${timestamp}_${platformName}_snapshot`;
-    const screenshotFilename = `${filenameBase}.png`;
+
+    // --- HTML処理 (常に実行) ---
     const htmlFilename = `${filenameBase}.html`;
-
-    // 一時保存用のパス
-    const screenshotPath = path.join(config.TEMP_DIR, screenshotFilename);
-    const htmlPath = path.join(config.TEMP_DIR, htmlFilename);
-
-    // HTMLの保存
+    htmlPath = path.join(config.TEMP_DIR, htmlFilename);
+    console.log(`[INFO] Getting HTML content for ${platformName}`);
+    htmlContent = await page.content();
     console.log(`[INFO] Saving HTML to ${htmlPath}`);
-    const htmlContent = await page.content();
     await saveHtmlToFile(htmlContent, htmlFilename);
+    // --------------------------
 
-    // スクリーンショットの取得
-    console.log(`[INFO] Taking screenshot and saving to ${screenshotPath}`);
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: platformName === 'amazon' // Amazonはフルページ、楽天は表示領域のみ
-    });
+    // --- スクリーンショット処理 (takeScreenshotフラグで分岐) ---
+    let screenshotMetadata = null; // スクリーンショットのメタデータ用
+    if (takeScreenshot) {
+      const screenshotFilename = `${filenameBase}.png`;
+      screenshotPath = path.join(config.TEMP_DIR, screenshotFilename);
+      console.log(`[INFO] Taking screenshot and saving to ${screenshotPath}`);
+      await page.screenshot({ path: screenshotPath, fullPage: platformName === 'amazon' });
+    } else {
+      console.log(`[INFO] Skipping screenshot for ${platformName}`);
+    }
+    // -------------------------------------------------------
 
-    // Google Driveにアップロード
     try {
-      // スクリーンショットをGoogle Driveにアップロード
-      const screenshotMetadata = await uploadToGoogleDrive(
-        screenshotPath,
-        `${platformName}_screenshot`,
-        config.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID,
-        'png'
-      );
-      console.log(`[INFO] Screenshot uploaded to Google Drive with ID: ${screenshotMetadata.id}`);
+      // --- Google Drive へのアップロード ---
+      // HTMLもtakeScreenshotのフラグで管理
+      if (takeScreenshot && htmlPath) {
+        console.log(`[INFO] Uploading HTML to Google Drive...`);
+        // ★ 上位スコープの変数に代入
+        htmlMetadata = await uploadToGoogleDrive(
+          htmlPath, `${platformName}_html_${timestamp}`,
+          config.GOOGLE_DRIVE_HTML_FOLDER_ID, 'html'
+        );
+        console.log(`[INFO] HTML uploaded. ID: ${htmlMetadata.id}`);
+      }
 
-      // HTMLをGoogle Driveにアップロード
-      const htmlMetadata = await uploadToGoogleDrive(
-        htmlPath,
-        `${platformName}_html`,
-        config.GOOGLE_DRIVE_HTML_FOLDER_ID,
-        'html'
-      );
-      console.log(`[INFO] HTML uploaded to Google Drive with ID: ${htmlMetadata.id}`);
-
-      // 結果を返す
-      return {
+      // スクリーンショットは takeScreenshot が true の場合のみアップロード
+      if (takeScreenshot && screenshotPath) {
+        console.log(`[INFO] Uploading screenshot to Google Drive...`);
+        // ★ 上位スコープの変数に代入
+        screenshotMetadata = await uploadToGoogleDrive(
+          screenshotPath, `${platformName}_screenshot_${timestamp}`,
+          config.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID, 'png'
+        );
+        console.log(`[INFO] Screenshot uploaded. ID: ${screenshotMetadata.id}`);
+      }
+      // ----------------------------------
+      // --- 戻り値の作成 ---
+      const result = {
         success: true,
-        google_drive: {
-          screenshot_id: screenshotMetadata.id,
-          screenshot_url: `https://drive.google.com/file/d/${screenshotMetadata.id}`,
-          html_id: htmlMetadata.id,
-          html_url: `https://drive.google.com/file/d/${htmlMetadata.id}`
-        }
+        html_content: htmlContent, // HTMLは常に追加
+        // ★ google_drive プロパティを初期化
+        google_drive: {}
       };
+
+      // ★ takeScreenshot が true で、かつアップロードが成功した場合のみ情報を追加
+      if (takeScreenshot) {
+        // htmlMetadata が null でないことを確認
+        if (htmlMetadata) {
+          result.google_drive.html_id = htmlMetadata.id;
+          result.google_drive.html_url = `https://drive.google.com/file/d/${htmlMetadata.id}`;
+        } else {
+           console.log("[INFO] HTML metadata not available (upload skipped or failed).");
+        }
+        // screenshotMetadata が null でないことを確認
+        if (screenshotMetadata) {
+          result.google_drive.screenshot_id = screenshotMetadata.id;
+          result.google_drive.screenshot_url = `https://drive.google.com/file/d/${screenshotMetadata.id}`;
+        } else {
+           console.log("[INFO] Screenshot metadata not available (skipped or upload failed).");
+        }
+      } else {
+        // takeScreenshot が false の場合は google_drive は空オブジェクトのまま
+        console.log("[INFO] Google Drive upload skipped as takeScreenshot is false.");
+      }
+
+      console.log(`[INFO] Successfully processed ${platformName}. Returning result.`);
+      return result;
+      // -------------------
+
     } catch (driveError) {
       console.error(`[ERROR] Failed to upload to Google Drive: ${driveError.message}`);
       console.error(`[ERROR] Backtrace: ${driveError.stack}`);
+      // エラー時もHTMLは返す
       return {
         success: false,
+        html_content: htmlContent,
         error: `Google Drive upload failed: ${driveError.message}`
       };
     } finally {
-      // 一時ファイルを削除
-      await removeFile(screenshotPath);
-      await removeFile(htmlPath);
+      // 一時ファイルを削除 (screenshotPath は存在する場合のみ削除)
+      if (screenshotPath) await removeFile(screenshotPath);
+      if (htmlPath) await removeFile(htmlPath); // HTMLパスも削除
     }
   } catch (error) {
-    console.error(`[ERROR] Error during ${platformName} snapshot: ${error.message}`);
+    console.error(`[ERROR] Error during ${platformName} processing: ${error.message}`);
     console.error(`[ERROR] Backtrace: ${error.stack}`);
-
-    // エラー発生時にスクリーンショットやHTMLを保存
     let errorFiles = [];
     if (page) {
-      errorFiles = await saveDebugInfoOnError(page, platformName);
-
-      // エラー情報もGoogle Driveにアップロード
-      if (errorFiles.length > 0) {
-        try {
-          for (const filePath of errorFiles) {
-            const fileName = path.basename(filePath);
-            const fileNameWithoutExt = path.basename(filePath, path.extname(filePath));
-            const extension = path.extname(filePath).replace('.', '');
-
-            await uploadToGoogleDrive(
-              filePath,
-              `error_${fileNameWithoutExt}`,
-              config.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID,
-              extension
-            );
-            console.log(`[INFO] Error debug file uploaded to Google Drive: ${fileName}`);
-          }
-        } catch (uploadError) {
-          console.error(`[ERROR] Failed to upload error files to Google Drive: ${uploadError.message}`);
-        } finally {
-          // エラーファイルを削除
-          for (const filePath of errorFiles) {
-            await removeFile(filePath);
-          }
-        }
-      }
+       try {
+          if (!htmlContent) htmlContent = await page.content();
+       } catch (contentError) {
+          console.warn("[WARN] Failed to get HTML content on error:", contentError);
+       }
+       // エラー時のデバッグ情報保存は常に試みる
+       errorFiles = await saveDebugInfoOnError(page, platformName);
+       if (errorFiles.length > 0) {
+         try {
+           for (const filePath of errorFiles) {
+             const fileName = path.basename(filePath);
+             const fileNameWithoutExt = path.basename(filePath, path.extname(filePath));
+             const extension = path.extname(filePath).replace('.', '');
+             await uploadToGoogleDrive(
+               filePath, `error_${fileNameWithoutExt}`,
+               config.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID, extension // エラーファイルもGdriveへ
+             );
+             console.log(`[INFO] Error debug file uploaded to Google Drive: ${fileName}`);
+           }
+         } catch (uploadError) {
+           console.error(`[ERROR] Failed to upload error files to Google Drive: ${uploadError.message}`);
+         } finally {
+           for (const filePath of errorFiles) {
+             await removeFile(filePath);
+           }
+         }
+       }
     }
-
+    // エラー時の戻り値 (HTMLは含める)
     return {
       success: false,
+      html_content: htmlContent,
       error: error.message,
       errorTime: new Date().toISOString()
     };
   } finally {
-    // ブラウザを確実に閉じる
     if (browser) {
       console.log(`[INFO] Quitting browser for ${platformName}`);
       await browser.close();
