@@ -106,8 +106,12 @@ async function snapperPlatform(platformName, url, options = { keyword: null, sto
         console.log(`[INFO] Rank 1 item found: URL=${rank1Item.url}, Title=${rank1Item.title}`);
 
         // 条件A: 楽天の場合のみ、storeCodeが指定されていればURLに含まれるかチェック
-        // ★ storeCode が指定されていなければ urlCondition は false になる
-        const urlCondition = platformName === 'rakuten' && storeCode ? rank1Item.url?.includes(`/${storeCode}/`) : false;
+
+        // Amazonの場合、またはstoreCodeが指定されていない場合はtrueとする
+        let urlCondition = true;
+        if (platformName === 'rakuten' && storeCode) {
+          urlCondition = rank1Item.url?.includes(`/${storeCode}/`);
+        }
 
         // 条件B: タイトルにキーワードが含まれるかチェック
         const titleCondition = rank1Item.title?.includes(keyword);
@@ -156,7 +160,7 @@ async function snapperPlatform(platformName, url, options = { keyword: null, sto
         );
         console.log(`[INFO] HTML uploaded. ID: ${htmlMetadata.id}`);
       } else {
-         console.log(`[INFO] Skipping HTML upload to Google Drive (condition not met).`);
+        console.log(`[INFO] Skipping HTML upload to Google Drive (condition not met).`);
       }
 
       if (conditionMet && screenshotPath) {
