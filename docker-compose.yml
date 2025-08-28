@@ -20,12 +20,18 @@ services:
       - GOOGLE_DRIVE_HTML_FOLDER_ID=${GOOGLE_DRIVE_HTML_FOLDER_ID}
       - GOOGLE_CREDENTIALS_JSON=${GOOGLE_CREDENTIALS_JSON}
       - CHROMIUM_PATH=/usr/bin/chromium
+      - RAKUTEN_URL=${RAKUTEN_URL}
+      - AMAZON_URL=${AMAZON_URL}
+      - KEYWORD=${KEYWORD}
+      - STORE_CODE=${STORE_CODE}
     # Xvfbを使ってヘッドレスブラウザを実行（オプション）
     command: >
       bash -c "
+        rm -f /tmp/.X99-lock
         Xvfb :99 -screen 0 1920x1080x24 -ac &
         export DISPLAY=:99
-        node index.js
+        sleep 2
+        node index.js \${RAKUTEN_URL} \${AMAZON_URL} \${KEYWORD} \${STORE_CODE}
       "
 
 volumes:
