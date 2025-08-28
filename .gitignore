@@ -47,6 +47,10 @@ credentials.json
 !examples/*.jpeg
 !examples/*.html
 
+!screenshots/*.png
+!screenshots/*.jpg
+!screenshots/*.jpeg
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged

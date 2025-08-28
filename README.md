@@ -2,6 +2,24 @@
 
 Node.js 22.xで実装されたAWS Lambdaで動作するスクレイピングとスクリーンショット取得、Google Driveアップロード機能です。楽天とAmazonのランキングページをスクレイピングし、スクリーンショットを撮影してGoogle Driveに保存します。
 
+## 目的
+楽天、Amazonそれぞれのプラットフォームで指定した商品が1位の時の、スクリーンショットが必要だったため。
+
+
+## 📸 スクリーンショット
+
+### 🛍️ 楽天の条件
+
+<div align="center">
+  <img src="screenshots/rakuten_screenshot_20250828025304.png" width="600">
+</div>
+
+### 🛒 Amazonの条件
+
+<div align="center">
+  <img src="screenshots/amazon_screenshot_20250828025319.png" width="600">
+</div>
+
 ## 機能
 
 - 楽天市場とAmazonの特定カテゴリのランキングページをスクレイピング
@@ -46,6 +64,36 @@ GOOGLE_CREDENTIALS_JSON={"type":"service_account", ...}
 # B. ファイルに保存
 # google-credentials.jsonファイルをプロジェクトのルートに保存し、以下を設定
 GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
+```
+
+### スクリーンショットの保存条件
+
+.envに設定します
+
+```bash
+RAKUTEN_URL=''
+AMAZON_URL=''
+KEYWORD=''
+STORE_CODE=''
+```
+
+#### 🛍️ 楽天の条件
+
+以下の両方を満たす場合に保存：
+1. ✅ 商品URLに/{storeCode}/が含まれる（例：/nyanzaq/）
+2. ✅ 商品タイトルにkeywordが含まれる（例：「バリバリボウル」）
+
+#### 🛒 Amazonの条件
+
+以下を満たす場合に保存：
+1. ✅ 商品タイトルにkeywordが含まれる（例：「バリバリボウル」）
+
+※ AmazonはstoreCodeのチェックをしません（urlConditionが常にtrue）
+
+```
+# 例
+- 楽天: nyanzaqストアの「バリバリボウル」が1位の時のみ保存
+- Amazon: 「バリバリボウル」が1位の時は常に保存
 ```
 
 ## Docker環境での実行方法（推奨）
@@ -114,15 +162,6 @@ docker-compose down
 
 Makefileを使用すると、よく使われるコマンドを簡単に実行できます。
 
-### 高度な機能
-
-このDockerセットアップには以下の機能が含まれています：
-
-- **Xvfb**: 仮想ディスプレイサーバーを使ってブラウザをより実際の環境に近い状態で実行
-- **キャッシュマウント**: apt のキャッシュを使って再ビルド時間を短縮
-- **日本語フォント**: 日本語ウェブサイトのスクリーンショットを適切に取得
-- **デバッグツール**: トラブルシューティング用の便利なツールを含む
-
 ## デプロイ方法
 
 ### 事前準備
@@ -170,7 +209,3 @@ npm run deploy
 - エラー時には、エラー情報とスクリーンショットが自動的にGoogle Driveに保存されます。
 - CloudWatchのログでエラー詳細を確認できます。
 - デバッグを有効にする場合は、`DEBUG=true`を設定してください。
-
-## ライセンス
-
-ISC
