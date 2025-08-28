@@ -5,7 +5,7 @@ const { snapperRankings } = require('./src/scraper');
 const config = require('./src/config');
 
 // 環境変数から Slack Webhook URL を取得
-const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || 'https://hooks.slack.com/services/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';
+const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
 
 /**
  * Lambda関数ハンドラー
@@ -22,33 +22,34 @@ exports.handler = async (event, context) => {
     // event が空、またはキーが存在しない場合のデフォルト値を config から取得
     const rakutenUrl = event?.rakutenUrl;
     const amazonUrl = event?.amazonUrl;
-    const takeScreenshot = event?.takeScreenshot ?? true;
+    const keyword = event?.keyword || null; // 例: nyans
+    const storeCode = event?.storeCode || null; // 例: chelseas-choice
+    // const takeScreenshot = event?.takeScreenshot ?? true;
 
-    // --- URLが指定されているかチェック ---
     if (!rakutenUrl && !amazonUrl) {
-      console.warn('[WARN] No target URLs provided (rakutenUrl or amazonUrl). Exiting.');
-      // 何も処理しない場合は成功レスポンスを返すことも可能
-      return {
-        statusCode: 200, // または 400 Bad Request など
-        body: JSON.stringify({
-          message: 'No target URLs provided in the event payload.',
-          results: {} // 空の結果
-        })
-      };
+      console.warn('[WARN] No target URLs provided. Exiting.');
+      return { statusCode: 200, body: JSON.stringify({ message: 'No target URLs provided.', results: {} }) };
     }
 
-    console.log(`[INFO] Processing Rakuten URL: ${rakutenUrl || 'Not provided'}`); // ログを調整
-    console.log(`[INFO] Processing Amazon URL: ${amazonUrl || 'Not provided'}`); // ログを調整
-    console.log(`[INFO] Take Screenshot: ${takeScreenshot}`);
 
-    // スクレイピングとスクリーンショットの実行 snapperRankings に URL (undefinedの可能性あり) とフラグを渡す
-    const results = await snapperRankings(rakutenUrl, amazonUrl, takeScreenshot);
+    console.log(`[INFO] Processing Rakuten URL: ${rakutenUrl || 'Not provided'}`);
+    console.log(`[INFO] Processing Amazon URL: ${amazonUrl || 'Not provided'}`);
+    console.log(`[INFO] Keyword for condition check: ${keyword || 'Not provided'}`); // キーワードログ追加
+    console.log(`[INFO] Store Code for condition check: ${storeCode || 'Not provided'}`); // ★ ストアコードログ追加
+
+    // ★ snapperRankings に keyword を渡す (takeScreenshotは削除)
+    const results = await snapperRankings(rakutenUrl, amazonUrl, keyword, storeCode);
 
     console.log('[INFO] Successfully completed ranking processing.');
-    const completionMessage = `Successfully completed ranking processing.${takeScreenshot ? ' Snapshots taken.' : ' HTML only.'}`;
+    const completionMessage = `Successfully completed ranking processing.`; // シンプルなメッセージ
 
     if (slackWebhookUrl) {
-      const slackMessage = { text: completionMessage };
+      // 必要なら結果の詳細をSlackに含める
+      let slackText = completionMessage;
+      if (results.rakuten?.condition_met) slackText += `\nRakuten condition met (keyword: ${keyword}, store: ${storeCode}). Screenshot taken.`;
+      // Amazonの条件チェックは現状 storeCode に依存するため、基本満たされない
+      // if (results.amazon?.condition_met) slackText += `\nAmazon condition met (keyword: ${keyword}). Screenshot taken.`;
+      const slackMessage = { text: slackText }; // 少し詳細なメッセージ
       await postToSlack(slackMessage);
       console.log('Successfully sent completion notification to Slack');
     }
@@ -58,7 +59,7 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       body: JSON.stringify({
         message: completionMessage,
-        results // results には実行されたプラットフォームの結果のみ含まれる
+        results
       })
     };
   } catch (error) {
@@ -151,29 +152,29 @@ function postToSlack(message) {
   });
 }
 
-// ローカル実行時の処理 (URL引数がなければ実行しないように変更)
+// ローカル実行時の処理 (storeCode引数を追加)
 if (require.main === module) {
   (async () => {
     try {
-      // コマンドライン引数からURLを取得 (なければ undefined)
       const localRakutenUrl = process.argv[2];
       const localAmazonUrl = process.argv[3];
-      const localTakeScreenshot = process.argv[4] ? process.argv[4].toLowerCase() !== 'false' : true;
+      const localKeyword = process.argv[4] || null;
+      // ★ コマンドライン引数5番目をstoreCodeとする
+      const localStoreCode = process.argv[5] || null;
 
       if (!localRakutenUrl && !localAmazonUrl) {
-          console.error('[ERROR] Please provide Rakuten URL and/or Amazon URL as command line arguments for local execution.');
-          process.exit(1); // エラー終了
+          console.error('[ERROR] Please provide Rakuten URL and/or Amazon URL.');
+          process.exit(1);
       }
 
-      console.log(`[INFO] Local execution with Rakuten URL: ${localRakutenUrl || 'Not provided'}, Amazon URL: ${localAmazonUrl || 'Not provided'}, Take Screenshot: ${localTakeScreenshot}`);
-      const results = await snapperRankings(localRakutenUrl, localAmazonUrl, localTakeScreenshot);
+      console.log(`[INFO] Local execution with Rakuten URL: ${localRakutenUrl || 'Not provided'}, Amazon URL: ${localAmazonUrl || 'Not provided'}, Keyword: ${localKeyword || 'Not provided'}, Store Code: ${localStoreCode || 'Not provided'}`);
+      // ★ keyword と storeCode を渡す
+      const results = await snapperRankings(localRakutenUrl, localAmazonUrl, localKeyword, localStoreCode);
       console.log('[INFO] Local execution results:', JSON.stringify(results, null, 2));
     } catch (error) {
       console.error('[ERROR] Local execution failed:', error);
-      if (slackWebhookUrl) {
-         // ... (Slack通知は変更なし) ...
-      }
-      process.exit(1); // エラー終了
+      // ... (Slack通知は変更なし) ...
+      process.exit(1);
     }
   })();
 }
