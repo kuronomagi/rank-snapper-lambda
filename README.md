@@ -1,20 +1,22 @@
 # Ranking Scraper Lambda
 
-Node.js 22.xで実装されたAWS Lambdaで動作するスクレイピングとスクリーンショット取得、Google Driveアップロード機能です。楽天とAmazonのランキングページをスクレイピングし、スクリーンショットを撮影してGoogle Driveに保存します。
+AWS Lambdaで動作するスクレイピングとスクリーンショット取得、Google Driveへのアップロードの機能を実装しています。
+楽天とAmazonのランキングページをスクレイピングし、指定した条件の商品が1位の時にスクリーンショットを撮影してGoogle Driveに保存します。
 
 ## 目的
+
 楽天、Amazonそれぞれのプラットフォームで指定した商品が1位の時の、スクリーンショットが必要だったため。
 
 
 ## 📸 スクリーンショット
 
-### 🛍️ 楽天の条件
+### 🛍️ 楽天
 
 <div align="center">
   <img src="screenshots/rakuten_screenshot_20250828025304.png" width="600">
 </div>
 
-### 🛒 Amazonの条件
+### 🛒 Amazon
 
 <div align="center">
   <img src="screenshots/amazon_screenshot_20250828025319.png" width="600">
