@@ -10,7 +10,11 @@ AWS Lambdaで動作するスクレイピングとスクリーンショット取�
 
 ## 📸 スクリーンショット
 
+
+
 ### 🛍️ 楽天
+
+条件例: nyanzaqストアの「バリバリボウル」が1位の時
 
 <div align="center">
   <img src="screenshots/rakuten_screenshot_20250828025304.png" width="600">
