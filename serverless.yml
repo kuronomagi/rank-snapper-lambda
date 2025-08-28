@@ -51,7 +51,7 @@ provider:
 
 functions:
   snapperRankings:
-    handler: index.handler
+    handler: dist/index.handler
     description: 'ランキングページのスクレイピングとスクリーンショット取得・GoogleDriveへのアップロード'
     layers:
       - arn:aws:lambda:ap-northeast-1:061051243877:layer:japanese-fonts:3 # 自作の日本語フォントレイヤー
@@ -66,8 +66,13 @@ plugins:
 package:
   individually: true
   patterns:
+    - dist/**  # コンパイル済みのJSファイルを含める
     - node_modules/** # 他の依存関係は含める
       # --- Excludes ---
+    - '!src/**'  # TypeScriptソースファイルを除外
+    - '!*.ts'    # ルートレベルのTypeScriptファイルを除外
+    - '!index.ts' # index.tsを明示的に除外
+    - '!tsconfig.json' # TypeScript設定を除外
     - '!.git/**'
     - '!.github/**'
     # ... 他のトップレベル除外 ...
