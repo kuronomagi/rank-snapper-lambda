@@ -5,12 +5,12 @@ const { randomBytes } = require('crypto');
 // 環境変数からの取得と、デフォルト値の設定
 module.exports = {
   // スクレイピング対象URL (デフォルト値として使用される)
-  RAKUTEN_URL: 'https://ranking.rakuten.co.jp/daily/215373',
-  AMAZON_URL: 'https://www.amazon.co.jp/gp/bestsellers/pet-supplies/2155373051',
+  RAKUTEN_URL: process.env.RAKUTEN_URL,
+  AMAZON_URL: process.env.AMAZON_URL,
 
   // Google Drive設定
-  GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID: process.env.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID || '11PHksIvs9KRDyXKMwaK8F-HbKws0rkF4',
-  GOOGLE_DRIVE_HTML_FOLDER_ID: process.env.GOOGLE_DRIVE_HTML_FOLDER_ID || '11PHksIvs9KRDyXKMwaK8F-HbKws0rkF4',
+  GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID: process.env.GOOGLE_DRIVE_SCREENSHOT_FOLDER_ID,
+  GOOGLE_DRIVE_HTML_FOLDER_ID: process.env.GOOGLE_DRIVE_HTML_FOLDER_ID,
   GOOGLE_CREDENTIALS_JSON: process.env.GOOGLE_CREDENTIALS_JSON,
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
 

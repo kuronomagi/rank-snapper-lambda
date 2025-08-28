@@ -11,16 +11,16 @@
 git clone --depth=1 https://github.com/sparticuz/chromium.git && \
   cd chromium && \
   make chromium.zip && \
-  bucketName="stg-lambda-ja-fonts-layer-bucket" && \
+  bucketName="lambda-ja-fonts-layer-bucket" && \
   versionNumber="133" && \
-  aws --profile stg-fukuramu-lambda-deployment-user s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumber}.zip" && \
+  aws --profile your-lambda-deployment-user s3 cp chromium.zip "s3://${bucketName}/chromiumLayers/chromium${versionNumber}.zip" && \
   aws lambda publish-layer-version \
     --layer-name chromium \
     --description "Chromium v${versionNumber}" \
     --content "S3Bucket=${bucketName},S3Key=chromiumLayers/chromium${versionNumber}.zip" \
     --compatible-runtimes nodejs \
     --compatible-architectures x86_64 \
-    --profile stg-fukuramu-lambda-deployment-user
+    --profile your-lambda-deployment-user
 ```
 
 Response
@@ -103,25 +103,25 @@ cd ..
 
 #### Zip ファイルを S3 にアップロード:
 
-`stg-lambda-ja-fonts-layer-bucket` バケットを作成
+`lambda-ja-fonts-layer-bucket` バケットを作成
 
 ```
-aws s3 cp japanese-fonts-layer.zip s3://stg-lambda-ja-fonts-layer-bucket/japanese-fonts-layer.zip --profile stg-fukuramu-lambda-deployment-user
+aws s3 cp japanese-fonts-layer.zip s3://lambda-ja-fonts-layer-bucket/japanese-fonts-layer.zip --profile your-lambda-deployment-user
 ```
 
 #### S3 パスを指定して Lambda レイヤーを公開:
 
 aws lambda publish-layer-version コマンドを実行します。今度は --zip-file オプションの代わりに --content オプションを使用し、S3 バケット名 (S3Bucket) と S3 上のファイル名 (S3Key) を指定します。
 
-`stg-lambda-ja-fonts-layer-bucket`
+`lambda-ja-fonts-layer-bucket`
 
 ```
 aws lambda publish-layer-version \
   --layer-name japanese-fonts \
   --description "Japanese fonts for Lambda (Noto Sans JP from S3)" \
-  --content S3Bucket=stg-lambda-ja-fonts-layer-bucket,S3Key=japanese-fonts-layer.zip \
+  --content S3Bucket=lambda-ja-fonts-layer-bucket,S3Key=japanese-fonts-layer.zip \
   --compatible-runtimes nodejs22.x \
-  --profile stg-fukuramu-lambda-deployment-user
+  --profile your-lambda-deployment-user
 ```
 
 #### 結果
@@ -151,7 +151,7 @@ aws lambda publish-layer-version \
   --description "Japanese fonts for Lambda" \
   --zip-file fileb://japanese-fonts-layer.zip \
   --compatible-runtimes nodejs22.x \
-  --profile stg-fukuramu-lambda-deployment-user
+  --profile your-lambda-deployment-user
 ```
 
 ### 5. serverless.ymlファイルにレイヤーを追加
