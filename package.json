@@ -9,8 +9,8 @@
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy": "serverless deploy --aws-profile stg-fukuramu-lambda-deployment-user",
-    "deploy:prod": "serverless deploy --stage prod --aws-profile stg-fukuramu-lambda-deployment-user"
+    "deploy": "serverless deploy --aws-profile your-deployment-user",
+    "deploy:prod": "serverless deploy --stage prod --aws-profile your-deployment-user"
   },
   "keywords": [
     "scraping",
@@ -19,8 +19,6 @@
     "aws",
     "google-drive"
   ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@sparticuz/chromium": "^133.0.0",
     "dotenv": "^16.4.7",
